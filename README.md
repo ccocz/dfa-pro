@@ -1,1 +1,1 @@
-# Automata implementation in Prolog
+# DFA
