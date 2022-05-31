@@ -26,6 +26,9 @@ getKeyBST(node(_, K-_, R), K0, V1) :-
     K0 @> K,
     getKeyBST(R, K0, V1).
 
+/*getKeyBST(node(_, _, R), K, V) :-
+    getKeyBST(R, K, V).*/
+
 % allPresent(List, BST) true iff all keys from list appears in BST.
 allPresent([], _).
 allPresent([L | R], T) :-
@@ -115,6 +118,7 @@ correct(dfa(TF, SS, FS), dfaInternal(S1, T, AL)) :-
     getStates(TF, S),
     getAlphabet(TF, A),
     toListBST(A, AL),
+    write("oki "), write(SS), nl,
     checkFullGraph(S, A, T),
     getKeyBST(S, SS, _),
     allPresent(FS, S),
@@ -156,6 +160,74 @@ findFinalPath(C, S, T, A, V) :-
     findFinalPath(NS, S, T, A, [NS | V]).
 
 % equal(+Automat1, +Automat2)
+equal(dfa(TF_A, SS_A, FS_A), dfa(TF_B, SS_B, FS_B)) :-
+    correct(dfa(TF_A, SS_A, FS_A), dfaInternal(_, T_A, A_A)),
+    correct(dfa(TF_B, SS_B, FS_B), dfaInternal(_, T_B, A_B)),
+    equalList(A_A, A_B),
+    construct(T_A, T_B, A_A, [fp(0,1,(SS_A-SS_B))], TM, []),
+    %getTransitions(TM, X),
+    %write(X).
+    correct(dfa(TM, SS_A-SS_B, [SS_A-SS_B]), X),
+    write(X).
+
+equalList(L1, L2) :- 
+    \+ (member(X, L1), \+ member(X, L2)),
+    \+ (member(X, L2), \+ member(X, L1)).
+% Given starting nodes, transitions and alphabet merge two DFAs by
+% using product construction.
+% fp(S1, C, S2)
+
+
+getAll(_, _, _, _, [], []).
+getAll(SA, SB, TA, TB, [X | A], [fp((SA-SB), X, (NA-NB)) | L]) :-
+     getKeyBST(TA, SA-X, NA),
+     getKeyBST(TB, SB-X, NB),
+     getAll(SA, SB, TA, TB, A, L).
+
+construct(TA, TB, A, SA, TM, V) :- 
+    productConstruction(TA, TB, A, SA, TM, [], V).
+
+productConstruction(_, _, _, [], TM, TM, _).
+
+productConstruction(%SA,
+ %SB,
+                     TA,
+                     TB,
+                     A,
+                     [fp(_,_,(SXA-SXB)) | K],
+                     TM,
+                     TMA,
+                     V) :-
+                         %write(V),nl,
+     member(SXA-SXB, V),
+     !,
+     %write(K),write(" hell "), write(TM), nl,
+     productConstruction(TA, TB, A, K, TM, TMA, V).
+
+productConstruction(%SA,
+%SB,
+                    TA, 
+                    TB, 
+                    A,
+                    [fp(_,_,(SXA-SXB)) | K],
+                    TM,
+                    TMA,
+                    V) :-
+    /*member(C, A),
+    getKeyBST(TA, SXA-C, NA),
+    getKeyBST(TB, SXB-C, NB),
+\+ member(NA-NB, V),*/
+
+    %write(SXA-SXB),nl,
+    write("hell: "), write(SXA-SXB),nl,
+    getAll(SXA, SXB, TA, TB, A, N),
+    append(K, N, K1),
+    %write(SXA-SXB), write(" "), write(NA-NB), write(" "), write(V), nl,
+    %write(K1), write('\n'),
+    %    write(N),nl,
+    append(N, TMA, TMAN),
+    productConstruction(TA, TB, A, K1, TM, TMAN, [SXA-SXB | V]).
+
 % subsetEq(+Automat1, +Automat2)
 
 % example(IdentyfikatorAutomatu, Automat)
