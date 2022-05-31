@@ -5,30 +5,21 @@
  * - check if x-y pair representation is valid
  */
 
-% Binary search tree with key/value pair
-% bst(empty).
-% bst(node(L, _, P)) :- bst(L), bst(P).
 
 insertBST(empty, K-V, node(empty, K-V, empty)).
-insertBST(node(L, K-_, R), X-V0, node(L, K-V0, R)) :-
-    X == K,
-    !.
+insertBST(node(L, K-_, R), K-V0, node(L, K-V0, R)).
 insertBST(node(L, K-V, R), X-Y, node(L1, K-V, R)) :-
-    X @=< K,
-    !,
+    X @< K,
     insertBST(L, X-Y, L1).
 insertBST(node(L, K-V, R), X-Y, node(L, K-V, R1)) :-
     X @> K,
     insertBST(R, X-Y, R1).
 
 % Succeeds iff K0 is present in the given BST and has V0 value attached.
-getKeyBST(node(_, K-V, _), K0, V) :-
-    K == K0,
-    !.
+getKeyBST(node(_, K-V, _), K, V).
 
 getKeyBST(node(L, K-_, _), K0, V1) :-
-    K0 @=< K,
-    !,
+    K0 @< K,
     getKeyBST(L, K0, V1).
 
 getKeyBST(node(_, K-_, R), K0, V1) :-
@@ -40,6 +31,13 @@ allPresent([], _).
 allPresent([L | R], T) :-
     getKeyBST(T, L, _),
     allPresent(R, T).
+
+% create list out of BST keys
+toListBST(T, L) :- toListBST(T, [], L).
+toListBST(empty, A, A).
+toListBST(node(L, K0-_, R), A, K) :-
+  toListBST(R, A, K1),
+  toListBST(L, [K0 | K1], K).
 
 % dfa(TransitionFunction, StartingState, FinalStates)
 
@@ -69,7 +67,7 @@ getAlphabet([fp(_, C, _) | Y], A, T) :-
 getTransitions(L, T) :- getTransitions(L, empty, T).
 getTransitions([], T, T).
 getTransitions([fp(S1, C, S2) | Y], A, T) :-
-    \+ getKeyBST(A, (S1-C), _),
+    \+ getKeyBST(A, S1-C, _),
     insertBST(A, (S1-C)-S2, A0),
     getTransitions(Y, A0, T).
 
@@ -83,6 +81,7 @@ doAllExist([X | Y], T) :-
 % [keys of BST_X] * [keys of BST_Y] = List.
 cartesianProduct(X, Y, Z) :- cartesianProduct(X, Y, [], Z).
 cartesianProduct(empty, _, A, A).
+cartesianProduct(_, empty, A, A) :- !.
 cartesianProduct(node(L, K-_, R), Y, A, Z) :-
     prependAll(K, Y, A, LY),
     cartesianProduct(L, Y, LY, Z0),
@@ -108,42 +107,53 @@ insertAllBST([L | R], T, Z) :-
     insertBST(T, L-2, T0),
     insertAllBST(R, T0, Z).
 
-
 % dfaInternal(states, alphabet, transitions, start, final)
 
 % correct(+Automat, -Reprezentacja)
-correct(dfa(TF, SS, FS), dfaInternal(S1, T)) :-
+correct(dfa(TF, SS, FS), dfaInternal(S1, T, AL)) :-
     getTransitions(TF, T),
     getStates(TF, S),
     getAlphabet(TF, A),
+    toListBST(A, AL),
     checkFullGraph(S, A, T),
     getKeyBST(S, SS, _),
     allPresent(FS, S),
-    insertBST(S, SS-1, S0),
-    insertAllBST(FS, S0, S1).
+    %    insertBST(S, SS-1, S0),
+    insertAllBST(FS, S, S1).
+
+accept(dfa(TF, SS, FS), []) :-
+    correct(dfa(TF, SS, FS), dfaInternal(S, _, _)),
+    getKeyBST(S, SS, 2).
 
 % accept(+Automat, ?Słowo)
-accept(dfa(TF, SS, FS), L) :-
-    correct(dfa(TF, SS, FS), dfaInternal(S, T)),
-    %    \+ empty(dfa(TF, SS, FS)),
-    path(SS, L, T, S).
+accept(dfa(TF, SS, FS), [L | R]) :-
+    correct(dfa(TF, SS, FS), dfaInternal(S, T, A)),
+    member(L, A),
+    (isAlive(SS, S, T, A) ->
+        getKeyBST(T, SS-L, N),
+        accept(dfa(TF, N, FS), R);
+        !, fail
+    ).
 
-path(C, [], _, S) :-
-    getKeyBST(S, C, F),
-    F == 2.
-path(C, [L | R], T, S) :-
-    getKeyBST(T, C-L, N),
-    path(N, R, T, S).
+isAlive(C, S, T, A) :-
+    findFinalPath(C, S, T, A, []).
 
 % empty(+Automat)
-empty(dfa(TF, SS, FS)) :- \+finalPath(dfa(TF, SS, FS), []).
+empty(dfa(TF, SS, FS)) :- \+finalPath(dfa(TF, SS, FS)).
 
-finalPath(dfa(_, SS, FS), _) :- member(SS, FS).
-finalPath(dfa(TF, SS, FS), V) :-
-    \+member(SS, FS),
-    member(fp(SS, _, NX), TF),
-    \+member(NX, V),
-    finalPath(dfa(TF, NX, FS), [NX | V]).
+finalPath(dfa(TF, SS, FS)) :-
+    correct(dfa(TF, SS, FS), dfaInternal(S, T, A)),
+    findFinalPath(SS, S, T, A, []).
+
+findFinalPath(C, S, _, _, _) :-
+    getKeyBST(S, C, 2),
+    !.
+
+findFinalPath(C, S, T, A, V) :-
+    member(NX, A),
+    getKeyBST(T, C-NX, NS),
+    \+ member(NS, V),
+    findFinalPath(NS, S, T, A, [NS | V]).
 
 % equal(+Automat1, +Automat2)
 % subsetEq(+Automat1, +Automat2)
