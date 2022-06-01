@@ -90,6 +90,28 @@ cartesianProduct(node(L, K-_, R), Y, A, Z) :-
     cartesianProduct(L, Y, LY, Z0),
     cartesianProduct(R, Y, Z0, Z).
 
+cartesianProduct(X, Y, XV, YV, Z) :- cartesianProduct(X, Y, XV, YV, [], Z).                     
+cartesianProduct(empty, _, _, _, A, A).                                               
+cartesianProduct(_, empty, _, _, A, A) :- !.                                          
+cartesianProduct(node(L, K-V, R), Y, XV, YV, A, Z) :-                                   
+    (
+        V=XV -> prependAlla(K, Y, YV, A, LY); LY=A
+    ),
+%prependAll(K, Y, A, LY),                                                    
+     cartesianProduct(L, Y, XV, YV, LY, Z0),                                             
+     cartesianProduct(R, Y, XV, YV, Z0, Z).                                              
+
+
+ % Create pairs of given element with all nodes of given BST.
+prependAlla(X, Y, YV, Z) :- prependAlla(X, Y, YV, [], Z).
+prependAlla(_, empty, _, A, A).
+prependAlla(X, node(L, K-V, R), YV, A, Z) :-
+    (
+        V=YV -> prependAlla(X, L, YV, [(X-K) | A], Z0);
+        prependAlla(X, L, YV, A, Z0)
+    ),
+    prependAlla(X, R, YV, Z0, Z).
+
 % Create pairs of given element with all nodes of given BST.
 prependAll(X, Y, Z) :- prependAll(X, Y, [], Z).
 prependAll(_, empty, A, A).
@@ -118,7 +140,6 @@ correct(dfa(TF, SS, FS), dfaInternal(S1, T, AL)) :-
     getStates(TF, S),
     getAlphabet(TF, A),
     toListBST(A, AL),
-    write("oki "), write(SS), nl,
     checkFullGraph(S, A, T),
     getKeyBST(S, SS, _),
     allPresent(FS, S),
@@ -161,14 +182,18 @@ findFinalPath(C, S, T, A, V) :-
 
 % equal(+Automat1, +Automat2)
 equal(dfa(TF_A, SS_A, FS_A), dfa(TF_B, SS_B, FS_B)) :-
-    correct(dfa(TF_A, SS_A, FS_A), dfaInternal(_, T_A, A_A)),
-    correct(dfa(TF_B, SS_B, FS_B), dfaInternal(_, T_B, A_B)),
+    correct(dfa(TF_A, SS_A, FS_A), dfaInternal(ST_A, T_A, A_A)),
+    correct(dfa(TF_B, SS_B, FS_B), dfaInternal(ST_B, T_B, A_B)),
     equalList(A_A, A_B),
     construct(T_A, T_B, A_A, [fp(0,1,(SS_A-SS_B))], TM, []),
     %getTransitions(TM, X),
     %write(X).
-    correct(dfa(TM, SS_A-SS_B, [SS_A-SS_B]), X),
-    write(X).
+    correct(dfa(TM, SS_A-SS_B, [SS_A-SS_B]), _),
+    cartesianProduct(ST_A, ST_B, 2, 0, FA),
+    cartesianProduct(ST_A, ST_B, 0, 2, FB),
+    append(FA, FB, FMERGE),
+    write(FMERGE).
+    %    write(FMERGE),nl,write(X),nl.
 
 equalList(L1, L2) :- 
     \+ (member(X, L1), \+ member(X, L2)),
