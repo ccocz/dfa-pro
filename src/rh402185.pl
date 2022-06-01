@@ -188,11 +188,11 @@ equal(dfa(TF_A, SS_A, FS_A), dfa(TF_B, SS_B, FS_B)) :-
     construct(T_A, T_B, A_A, [fp(0,1,(SS_A-SS_B))], TM, []),
     %getTransitions(TM, X),
     %write(X).
-    correct(dfa(TM, SS_A-SS_B, [SS_A-SS_B]), _),
+    %correct(dfa(TM, SS_A-SS_B, [SS_A-SS_B]), _),
     cartesianProduct(ST_A, ST_B, 2, 0, FA),
     cartesianProduct(ST_A, ST_B, 0, 2, FB),
     append(FA, FB, FMERGE),
-    write(FMERGE).
+    empty(dfa(TM, SS_A-SS_B, FMERGE)).
     %    write(FMERGE),nl,write(X),nl.
 
 equalList(L1, L2) :- 
@@ -244,7 +244,7 @@ productConstruction(%SA,
 \+ member(NA-NB, V),*/
 
     %write(SXA-SXB),nl,
-    write("hell: "), write(SXA-SXB),nl,
+    %write("hell: "), write(SXA-SXB),nl,
     getAll(SXA, SXB, TA, TB, A, N),
     append(K, N, K1),
     %write(SXA-SXB), write(" "), write(NA-NB), write(" "), write(V), nl,
@@ -253,7 +253,18 @@ productConstruction(%SA,
     append(N, TMA, TMAN),
     productConstruction(TA, TB, A, K1, TM, TMAN, [SXA-SXB | V]).
 
-% subsetEq(+Automat1, +Automat2)
+%subsetEq(+Automat1, +Automat2)
+subsetEq(dfa(TF_A, SS_A, FS_A), dfa(TF_B, SS_B, FS_B)) :-                          
+     correct(dfa(TF_A, SS_A, FS_A), dfaInternal(ST_A, T_A, A_A)),                
+     correct(dfa(TF_B, SS_B, FS_B), dfaInternal(ST_B, T_B, A_B)),                
+     equalList(A_A, A_B),                                                        
+     construct(T_A, T_B, A_A, [fp(0,1,(SS_A-SS_B))], TM, []),                    
+     %getTransitions(TM, X),                                                     
+     %write(X).                                                                  
+     %correct(dfa(TM, SS_A-SS_B, [SS_A-SS_B]), _),                               
+     cartesianProduct(ST_A, ST_B, 2, 0, FA),                                     
+     empty(dfa(TM, SS_A-SS_B, FA)).                                          
+     %    write(FMERGE),nl,write(X),nl.                                          
 
 % example(IdentyfikatorAutomatu, Automat)
 example(a11, dfa([fp(1,a,1),fp(1,b,2),fp(2,a,2),fp(2,b,1)], 1, [2,1])).
