@@ -26,6 +26,16 @@ test(17) :- \+ (example(a2, A), accept(A, [a])).
 
 test(18) :- \+ (example(c1, A), empty(A)).
 test(19) :- (example(c1, A), example(c2, B), equal(A, B)).
-test(19) :- \+ (example(c1, A), example(a2, B), equal(A, B)).
+test(20) :- \+ (example(c1, A), example(a2, B), equal(A, B)).
+
+test(21) :- example(c1, A), example(a11, B), subsetEq(A, B).
+test(22) :- example(c1, A), example(a12, B), subsetEq(A, B).
+
+test(23) :-
+    findall([X, Y], (example(a11, A), accept(A, [X, Y])), Xs),
+    Xs == [[a, a],
+           [a, b],
+           [b, a],
+           [b, b]].
 
 :- end_tests(rh402185).
