@@ -5,9 +5,12 @@
  * - check if x-y pair representation is valid
  */
 
+% memberchk, punktu nadbiour
+% visited as bst
+% correct before all
 
-insertBST(empty, K-V, node(empty, K-V, empty)).
-insertBST(node(L, K-_, R), K-V0, node(L, K-V0, R)).
+:- use_module(library(lists)).
+
 insertBST(node(L, K-V, R), X-Y, node(L1, K-V, R)) :-
     X @< K,
     insertBST(L, X-Y, L1).
@@ -15,19 +18,35 @@ insertBST(node(L, K-V, R), X-Y, node(L, K-V, R1)) :-
     X @> K,
     insertBST(R, X-Y, R1).
 
+insertBST(node(L, K-_, R), K-V0, node(L, K-V0, R)).
+insertBST(empty, K-V, node(empty, K-V, empty)).
+
+okPar(X-Y) :-
+    \+ var(X),
+    \+ var(Y),
+    okPar(X), okPar(Y).
+
 % Succeeds iff K0 is present in the given BST and has V0 value attached.
-getKeyBST(node(_, K-V, _), K, V).
+
+getKeyBST(node(_, K-V, _), K, V).  
 
 getKeyBST(node(L, K-_, _), K0, V1) :-
+    okPar(K0),
     K0 @< K,
     getKeyBST(L, K0, V1).
 
-getKeyBST(node(_, K-_, R), K0, V1) :-
+getKeyBST(node(L, K-_, _), K0, V1) :-
+    okPar(K0),
     K0 @> K,
+    getKeyBST(L, K0, V1).
+
+getKeyBST(node(_, _, R), K0, V1) :-
+    \+ okPar(K0),
     getKeyBST(R, K0, V1).
 
-/*getKeyBST(node(_, _, R), K, V) :-
-    getKeyBST(R, K, V).*/
+getKeyBST(node(L, _, _), K0, V1) :-
+    \+ okPar(K0),
+    getKeyBST(L, K0, V1).
 
 % allPresent(List, BST) true iff all keys from list appears in BST.
 allPresent([], _).
@@ -84,33 +103,23 @@ doAllExist([X | Y], T) :-
 % [keys of BST_X] * [keys of BST_Y] = List.
 cartesianProduct(X, Y, Z) :- cartesianProduct(X, Y, [], Z).
 cartesianProduct(empty, _, A, A).
-cartesianProduct(_, empty, A, A) :- !.
+cartesianProduct(_, empty, A, A).
 cartesianProduct(node(L, K-_, R), Y, A, Z) :-
     prependAll(K, Y, A, LY),
     cartesianProduct(L, Y, LY, Z0),
     cartesianProduct(R, Y, Z0, Z).
 
+% Similar to above predicate, only picked nodes has to meet value constraint.
 cartesianProduct(X, Y, XV, YV, Z) :- cartesianProduct(X, Y, XV, YV, [], Z).                     
 cartesianProduct(empty, _, _, _, A, A).                                               
-cartesianProduct(_, empty, _, _, A, A) :- !.                                          
+cartesianProduct(_, empty, _, _, A, A).
 cartesianProduct(node(L, K-V, R), Y, XV, YV, A, Z) :-                                   
     (
-        V=XV -> prependAlla(K, Y, YV, A, LY); LY=A
+        V=XV -> prependAllC(K, Y, YV, A, LY);
+        LY=A
     ),
-%prependAll(K, Y, A, LY),                                                    
-     cartesianProduct(L, Y, XV, YV, LY, Z0),                                             
-     cartesianProduct(R, Y, XV, YV, Z0, Z).                                              
-
-
- % Create pairs of given element with all nodes of given BST.
-prependAlla(X, Y, YV, Z) :- prependAlla(X, Y, YV, [], Z).
-prependAlla(_, empty, _, A, A).
-prependAlla(X, node(L, K-V, R), YV, A, Z) :-
-    (
-        V=YV -> prependAlla(X, L, YV, [(X-K) | A], Z0);
-        prependAlla(X, L, YV, A, Z0)
-    ),
-    prependAlla(X, R, YV, Z0, Z).
+    cartesianProduct(L, Y, XV, YV, LY, Z0),                                             
+    cartesianProduct(R, Y, XV, YV, Z0, Z).                                              
 
 % Create pairs of given element with all nodes of given BST.
 prependAll(X, Y, Z) :- prependAll(X, Y, [], Z).
@@ -119,6 +128,15 @@ prependAll(X, node(L, K-_, R), A, Z) :-
     prependAll(X, L, [(X-K) | A], Z0),
     prependAll(X, R, Z0, Z).
 
+ % Similar to above, only with a value constraint.
+prependAllC(X, Y, YV, Z) :- prependAllC(X, Y, YV, [], Z).
+prependAllC(_, empty, _, A, A).
+prependAllC(X, node(L, K-V, R), YV, A, Z) :-
+    (
+        V=YV -> prependAllC(X, L, YV, [(X-K) | A], Z0);
+        prependAllC(X, L, YV, A, Z0)
+    ),
+    prependAllC(X, R, YV, Z0, Z).
 
 % checkFullGraph(States, Alphabet, Transitions) true iff single outgoing
 % edge for each letter in alphabet.
@@ -139,13 +157,17 @@ correct(dfa(TF, SS, FS), dfaInternal(S1, T, AL)) :-
     getTransitions(TF, T),
     getStates(TF, S),
     getAlphabet(TF, A),
-    toListBST(A, AL),
     checkFullGraph(S, A, T),
-    getKeyBST(S, SS, _),
     allPresent(FS, S),
-    %    insertBST(S, SS-1, S0),
+    getKeyBST(S, SS, _),
+    toListBST(A, AL),
     insertAllBST(FS, S, S1).
 
+accept(dfa(TF, SS, FS), L) :-
+    correct(dfa(TF, SS, FS), dfaInternal(S, T, A)),
+    acceptHelper(SS, S, T, A, L).
+
+/*
 accept(dfa(TF, SS, FS), []) :-
     correct(dfa(TF, SS, FS), dfaInternal(S, _, _)),
     getKeyBST(S, SS, 2).
@@ -159,6 +181,18 @@ accept(dfa(TF, SS, FS), [L | R]) :-
         accept(dfa(TF, N, FS), R);
         !, fail
     ).
+*/
+
+acceptHelper(SS, S, _, _, []) :-
+    getKeyBST(S, SS, 2).
+
+acceptHelper(SS, S, T, A, [L | R]) :-
+    %member(L, A),
+     %(isAlive(SS, S, T, A) ->
+         getKeyBST(T, SS-L, N),
+         acceptHelper(N, S, T, A, R).
+         %    !, fail
+         %).
 
 isAlive(C, S, T, A) :-
     findFinalPath(C, S, T, A, []).
@@ -186,23 +220,17 @@ equal(dfa(TF_A, SS_A, FS_A), dfa(TF_B, SS_B, FS_B)) :-
     correct(dfa(TF_B, SS_B, FS_B), dfaInternal(ST_B, T_B, A_B)),
     equalList(A_A, A_B),
     construct(T_A, T_B, A_A, [fp(0,1,(SS_A-SS_B))], TM, []),
-    %getTransitions(TM, X),
-    %write(X).
-    %correct(dfa(TM, SS_A-SS_B, [SS_A-SS_B]), _),
     cartesianProduct(ST_A, ST_B, 2, 0, FA),
     cartesianProduct(ST_A, ST_B, 0, 2, FB),
     append(FA, FB, FMERGE),
     empty(dfa(TM, SS_A-SS_B, FMERGE)).
-    %    write(FMERGE),nl,write(X),nl.
 
 equalList(L1, L2) :- 
     \+ (member(X, L1), \+ member(X, L2)),
     \+ (member(X, L2), \+ member(X, L1)).
+
 % Given starting nodes, transitions and alphabet merge two DFAs by
 % using product construction.
-% fp(S1, C, S2)
-
-
 getAll(_, _, _, _, [], []).
 getAll(SA, SB, TA, TB, [X | A], [fp((SA-SB), X, (NA-NB)) | L]) :-
      getKeyBST(TA, SA-X, NA),
@@ -214,42 +242,26 @@ construct(TA, TB, A, SA, TM, V) :-
 
 productConstruction(_, _, _, [], TM, TM, _).
 
-productConstruction(%SA,
- %SB,
-                     TA,
-                     TB,
-                     A,
-                     [fp(_,_,(SXA-SXB)) | K],
-                     TM,
-                     TMA,
-                     V) :-
-                         %write(V),nl,
+productConstruction(TA,
+                    TB,
+                    A,
+                    [fp(_,_,(SXA-SXB)) | K],
+                    TM,
+                    TMA,
+                    V) :-
      member(SXA-SXB, V),
      !,
-     %write(K),write(" hell "), write(TM), nl,
      productConstruction(TA, TB, A, K, TM, TMA, V).
 
-productConstruction(%SA,
-%SB,
-                    TA, 
+productConstruction(TA, 
                     TB, 
                     A,
                     [fp(_,_,(SXA-SXB)) | K],
                     TM,
                     TMA,
                     V) :-
-    /*member(C, A),
-    getKeyBST(TA, SXA-C, NA),
-    getKeyBST(TB, SXB-C, NB),
-\+ member(NA-NB, V),*/
-
-    %write(SXA-SXB),nl,
-    %write("hell: "), write(SXA-SXB),nl,
     getAll(SXA, SXB, TA, TB, A, N),
     append(K, N, K1),
-    %write(SXA-SXB), write(" "), write(NA-NB), write(" "), write(V), nl,
-    %write(K1), write('\n'),
-    %    write(N),nl,
     append(N, TMA, TMAN),
     productConstruction(TA, TB, A, K1, TM, TMAN, [SXA-SXB | V]).
 
@@ -259,12 +271,8 @@ subsetEq(dfa(TF_A, SS_A, FS_A), dfa(TF_B, SS_B, FS_B)) :-
      correct(dfa(TF_B, SS_B, FS_B), dfaInternal(ST_B, T_B, A_B)),                
      equalList(A_A, A_B),                                                        
      construct(T_A, T_B, A_A, [fp(0,1,(SS_A-SS_B))], TM, []),                    
-     %getTransitions(TM, X),                                                     
-     %write(X).                                                                  
-     %correct(dfa(TM, SS_A-SS_B, [SS_A-SS_B]), _),                               
      cartesianProduct(ST_A, ST_B, 2, 0, FA),                                     
-     empty(dfa(TM, SS_A-SS_B, FA)).                                          
-     %    write(FMERGE),nl,write(X),nl.                                          
+     empty(dfa(TM, SS_A-SS_B, FA)).
 
 % example(IdentyfikatorAutomatu, Automat)
 example(a11, dfa([fp(1,a,1),fp(1,b,2),fp(2,a,2),fp(2,b,1)], 1, [2,1])).
