@@ -24,4 +24,8 @@ test(17) :- \+ (example(a2, A), accept(A, [a])).
 
 % Custom tests
 
+test(18) :- \+ (example(c1, A), empty(A)).
+test(19) :- (example(c1, A), example(c2, B), equal(A, B)).
+test(19) :- \+ (example(c1, A), example(a2, B), equal(A, B)).
+
 :- end_tests(rh402185).
