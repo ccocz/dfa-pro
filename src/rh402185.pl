@@ -7,7 +7,6 @@
 
 % memberchk, punktu nadbiour
 % visited as bst
-% correct before all
 
 :- use_module(library(lists)).
 
@@ -35,11 +34,13 @@ memberBST(node(_, K-V, _), K, V).
 memberBST(node(L, K-_, _), K0, V) :-
     initPair(K0),
     K0 @< K,
+    !,
     memberBST(L, K0, V).
 
 memberBST(node(L, K-_, _), K0, V) :-
     initPair(K0),
     K0 @> K,
+    !,
     memberBST(L, K0, V).
 
 memberBST(node(_, _, R), K, V) :-
@@ -134,7 +135,7 @@ insertAllBST([L | R], T, Z) :-
 % dfaInternal(states, transitions, alphabet)
 
 % correct(+Automata, -Representation)
-correct(dfa(TF, SS, FS), dfaInternal(S1, T, AL)) :-
+correct(dfa(TF, SS, FS), dfaInternal(S1, T, AL, DET)) :-
     transitions(TF, T),
     states(TF, S),
     alphabet(TF, A),
@@ -142,19 +143,44 @@ correct(dfa(TF, SS, FS), dfaInternal(S1, T, AL)) :-
     allPresent(FS, S),
     memberBST(S, SS, _),
     toListBST(A, AL),
-    insertAllBST(FS, S, S1).
+    insertAllBST(FS, S, S1),
+    aliveNodes(T, S1, S1, AL, DE),
+    insertAllBST(DE, empty, DET).
+
+/* aliveNodes(+Transitions, 
+             +CurrentState
+             +States
+             +Alphabet
+             +AliveNodes)
+             
+             iff AlivesNodes is list of nodes from which exists
+             a path to a final node.
+             */
+aliveNodes(T, S, CS, A, AL) :- aliveNodes(T, S, CS, A, [], AL).
+aliveNodes(_, empty, _, _, AL, AL).
+aliveNodes(T, node(L, ST-_, R), CS, A, AC, AL) :-
+    aliveNodes(T, R, CS, A, AC, AL1),
+    (
+        findFinalPath(ST, CS, T, A, []) ->
+        aliveNodes(T, L, CS, A, [ST | AL1], AL);
+        aliveNodes(T, L, CS, A, AL1, AL)
+    ).
 
 % accept(+Automata, ?Word)
 accept(dfa(TF, SS, FS), L) :-
-    correct(dfa(TF, SS, FS), dfaInternal(S, T, A)),
-    acceptHelper(SS, S, T, A, L).
+    correct(dfa(TF, SS, FS), dfaInternal(S, T, A, DE)),
+    acceptHelper(SS, S, T, A, L, DE).
 
-acceptHelper(SS, S, _, _, []) :-
+acceptHelper(SS, S, _, _, [], _) :-
     memberBST(S, SS, 1).
 
-acceptHelper(SS, S, T, A, [L | R]) :-
-    memberBST(T, SS-L, N),
-    acceptHelper(N, S, T, A, R).
+acceptHelper(SS, S, T, A, [L | R], DE) :-
+    (
+        memberBST(DE, SS, _) ->
+        memberBST(T, SS-L, N),
+        acceptHelper(N, S, T, A, R, DE);
+        !, fail                             % looped into cycle, failing
+    ).
 
 % empty(+Automata)
 empty(dfa(TF, SS, FS)) :- \+ finalPath(dfa(TF, SS, FS)).
@@ -162,8 +188,8 @@ empty(dfa(TF, SS, FS)) :- \+ finalPath(dfa(TF, SS, FS)).
 % finalPath(+Automata) iff there exists a path 
 % from starting state to a final state 
 finalPath(dfa(TF, SS, FS)) :-
-    correct(dfa(TF, SS, FS), dfaInternal(S, T, A)),
-    findFinalPath(SS, S, T, A, []).
+    correct(dfa(TF, SS, FS), dfaInternal(_, _, _, DE)),
+    memberBST(DE, SS, _).
 
 findFinalPath(C, S, _, _, _) :-
     memberBST(S, C, 1),
@@ -177,8 +203,8 @@ findFinalPath(C, S, T, A, V) :-
 
 % equal(+Automata1, +Automata2)
 equal(dfa(TF_A, SS_A, FS_A), dfa(TF_B, SS_B, FS_B)) :-
-    correct(dfa(TF_A, SS_A, FS_A), dfaInternal(ST_A, T_A, A_A)),
-    correct(dfa(TF_B, SS_B, FS_B), dfaInternal(ST_B, T_B, A_B)),
+    correct(dfa(TF_A, SS_A, FS_A), dfaInternal(ST_A, T_A, A_A, _)),
+    correct(dfa(TF_B, SS_B, FS_B), dfaInternal(ST_B, T_B, A_B, _)),
     equalList(A_A, A_B),
     construct(T_A, T_B, A_A, [fp(0,1,(SS_A-SS_B))], TM, []),
     states(TM, ST),
@@ -212,8 +238,8 @@ equalList(L1, L2) :-
               +transitionsB,
               +alphabet,
               -result)
-   iff result is list of edges which is constructed 
-   following product construction. */
+   iff result is list of edges which is constructed following 
+   product construction. */
 allProducts(_, _, _, _, [], []).
 allProducts(SA, SB, TA, TB, [X | A], [fp((SA-SB), X, (NA-NB)) | L]) :-
      memberBST(TA, SA-X, NA),
@@ -250,48 +276,11 @@ productConstruction(TA,
 
 %subsetEq(+Automata1, +Automata2)
 subsetEq(dfa(TF_A, SS_A, FS_A), dfa(TF_B, SS_B, FS_B)) :-                          
-     correct(dfa(TF_A, SS_A, FS_A), dfaInternal(ST_A, T_A, A_A)),                
-     correct(dfa(TF_B, SS_B, FS_B), dfaInternal(ST_B, T_B, A_B)),                
+     correct(dfa(TF_A, SS_A, FS_A), dfaInternal(ST_A, T_A, A_A, _)),                
+     correct(dfa(TF_B, SS_B, FS_B), dfaInternal(ST_B, T_B, A_B, _)),                
      equalList(A_A, A_B),                                                        
      construct(T_A, T_B, A_A, [fp(0,1,(SS_A-SS_B))], TM, []),
      states(TM, ST),
      toListBST(ST, STL),
      unionConstraint(STL, ST_A, ST_B, 1, 0, FA),
      empty(dfa(TM, SS_A-SS_B, FA)).
-
-% example(IdentyfikatorAutomatu, Automat)
-example(a11, dfa([fp(1,a,1),fp(1,b,2),fp(2,a,2),fp(2,b,1)], 1, [2,1])).
-example(a12, dfa([fp(x,a,y),fp(x,b,x),fp(y,a,x),fp(y,b,x)], x, [x,y])).
-example(a2, 
-    dfa([fp(1,a,2),
-        fp(2,b,1),fp(1,b,3),fp(2,a,3), fp(3,b,3),fp(3,a,3)], 1, [1])).
-example(a3, dfa([fp(0,a,1),fp(1,a,0)], 0, [0])).
-example(a4, dfa([fp(x,a,y),fp(y,a,z),fp(z,a,x)], x, [x])).
-example(a5, dfa([fp(x,a,y),fp(y,a,z),fp(z,a,zz),fp(zz,a,x)], x, [x])).
-example(a6, dfa([fp(1,a,1),fp(1,b,2),fp(2,a,2),fp(2,b,1)], 1, [])).
-example(a7, dfa([fp(1,a,1),fp(1,b,2),fp(2,a,2),fp(2,b,1), 
-    fp(3,b,3),fp(3,a,3)], 1, [3])).
-
-% bad ones
-example(b1, dfa([fp(1,a,1),fp(1,a,1)], 1, [])).
-example(b2, dfa([fp(1,a,1),fp(1,a,2)], 1, [])).
-example(b3, dfa([fp(1,a,2)], 1, [])).
-example(b4, dfa([fp(1,a,1)], 2, [])).
-example(b5, dfa([fp(1,a,1)], 1, [1,2])).
-example(b6, dfa([], [], [])).
-
-% custom
-example(c1, dfa([fp(0, b, 1), 
-                 fp(0, a, 2),
-                 fp(1, a, 1),
-                 fp(1, b, 2),
-                 fp(2, a, 2),
-                 fp(2, b, 2)], 0, [1, 2])).
-
-example(c2, dfa([fp(0, a, 1), 
-                 fp(0, b, 1),
-                 fp(1, a, 1),
-                 fp(1, b, 1)],
-                 0,
-                 [1]
-                )).
