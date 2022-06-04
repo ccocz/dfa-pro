@@ -1,4 +1,4 @@
-% example(IdentyfikatorAutomatu, Automat)
+% example(ID, Automata)
 example(a11, dfa([fp(1,a,1),fp(1,b,2),fp(2,a,2),fp(2,b,1)], 1, [2,1])).
 example(a12, dfa([fp(x,a,y),fp(x,b,x),fp(y,a,x),fp(y,b,x)], x, [x,y])).
 example(a2, 
@@ -42,6 +42,17 @@ example(c3, dfa([fp(0, a, 1),
                  fp(2, a, 2),
                  fp(2, b, 2)], 0, [1])).
 
+example(c4, dfa([fp(0, a, 1),
+                 fp(0, b, 1),
+                 fp(1, a, 2),
+                 fp(1, b, 2),
+                 fp(2, a, 3),
+                 fp(2, b, 4),
+                 fp(3, a, 3),
+                 fp(3, b, 3),
+                 fp(4, a, 3),
+                 fp(4, b, 4)], 0, [1, 2])).
+
 :- begin_tests(rh402185).
 
 % Success
@@ -67,7 +78,6 @@ test(16) :- \+ (example(a4, A), example(a3, B), subsetEq(A, B)).
 test(17) :- \+ (example(a2, A), accept(A, [a])).
 
 % Custom tests
-
 test(18) :- \+ (example(c1, A), empty(A)).
 test(19) :- (example(c1, A), example(c2, B), equal(A, B)).
 test(20) :- \+ (example(c1, A), example(a2, B), equal(A, B)).
@@ -82,5 +92,22 @@ test(23) :-
            [b, a],
            [b, b]].
 
+test(24) :-
+    findall(X, (example(c3, A), accept(A, X)), Xs),                  
+     Xs == [[a], [b]]. 
+
+test(25) :- \+ (example(c3, A), example(c4, B), equal(A, B)).
+
+test(26) :- example(c3, A), example(c4, B), subsetEq(A, B).
+
+test(27) :-
+     findall(X, (example(c4, A), accept(A, X)), Xs),
+     sort(Xs, Xss),
+     Xss == [[a],
+            [a, a],
+            [a, b],
+            [b],
+            [b, a],
+            [b, b]].
 
 :- end_tests(rh402185).

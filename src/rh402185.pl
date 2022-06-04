@@ -179,7 +179,7 @@ acceptHelper(SS, S, T, A, [L | R], DE) :-
         memberBST(DE, SS, _) ->
         memberBST(T, SS-L, N),
         acceptHelper(N, S, T, A, R, DE);
-        !, fail                             % looped into cycle, failing
+        !, fail                             % looped into dead cycle, failing
     ).
 
 % empty(+Automata)
@@ -249,6 +249,7 @@ allProducts(SA, SB, TA, TB, [X | A], [fp((SA-SB), X, (NA-NB)) | L]) :-
 construct(TA, TB, A, SA, TM, V) :- 
     productConstruction(TA, TB, A, SA, TM, [], V).
 
+% 
 productConstruction(_, _, _, [], TM, TM, _).
 
 productConstruction(TA,
