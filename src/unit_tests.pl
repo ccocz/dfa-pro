@@ -53,6 +53,9 @@ example(c4, dfa([fp(0, a, 1),
                  fp(4, a, 3),
                  fp(4, b, 4)], 0, [1, 2])).
 
+example(c5, dfa([fp(1, a, 2), fp(2, a, 2)], 1, [2])).
+
+
 :- begin_tests(rh402185).
 
 % Success

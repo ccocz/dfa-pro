@@ -1,13 +1,5 @@
 % @author Resul Hangeldiyev
 
-/*
- * todos:
- * - check if x-y pair representation is valid
- */
-
-% memberchk, punktu nadbiour
-% visited as bst
-
 :- use_module(library(lists)).
 
 % insertBST(+T, +(A-B), -R)
@@ -249,7 +241,15 @@ allProducts(SA, SB, TA, TB, [X | A], [fp((SA-SB), X, (NA-NB)) | L]) :-
 construct(TA, TB, A, SA, TM, V) :- 
     productConstruction(TA, TB, A, SA, TM, [], V).
 
-% 
+/*productConstruction(+transitionsA,
+                     +transitionsB,
+                     +alphabet,
+                     +queue
+                     +product
+                     +productAccumulator
+                     +visitedStates)
+
+ search in breadth first and accumulate product construction. */
 productConstruction(_, _, _, [], TM, TM, _).
 
 productConstruction(TA,
