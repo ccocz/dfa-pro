@@ -124,7 +124,7 @@ insertAllBST([L | R], T, Z) :-
     insertBST(T, L-1, T0),
     insertAllBST(R, T0, Z).
 
-% dfaInternal(states, transitions, alphabet)
+% dfaInternal(states, transitions, alphabet, aliveNodes)
 
 % correct(+Automata, -Representation)
 correct(dfa(TF, SS, FS), dfaInternal(S1, T, AL, DET)) :-
